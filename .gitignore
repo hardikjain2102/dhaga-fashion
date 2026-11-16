@@ -1,0 +1,15 @@
+node_modules/
+dist/
+build/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+kubeconfig*
+admin.conf
+*.log
+.DS_Store
+# plaintext secrets must never be committed; only SealedSecrets
+k8s/**/secret-plain*.yaml
