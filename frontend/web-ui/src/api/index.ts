@@ -1,8 +1,10 @@
 // Single entry point for all backend calls.
 // Milestone 5 replaces the bodies below with real fetch() calls to /api/*.
 import { seedProducts, seedUsers, type MockUser } from "./mockData";
-import type {
-  Address, Cart, CartLine, Order, Product, ProductQuery, SignupInput, User,
+import {
+  CATEGORIES,
+  type Address, type Cart, type CartLine, type Fulfilment, type Order, type Product,
+  type ProductInput, type ProductQuery, type SellerOrderItem, type SignupInput, type User,
 } from "../types";
 
 export class ApiError extends Error {
@@ -17,7 +19,8 @@ const delay = (ms = 250) => new Promise((resolve) => setTimeout(resolve, ms));
 const SESSION_KEY = "dhaga.session";
 const CARTS_KEY = "dhaga.carts";
 const ORDERS_KEY = "dhaga.orders";
-const STOCK_KEY = "dhaga.stock";
+const USERS_KEY = "dhaga.users";
+const PRODUCTS_KEY = "dhaga.products";
 
 function load<T>(key: string, fallback: T): T {
   try {
@@ -36,15 +39,10 @@ function save(key: string, value: unknown): void {
 }
 
 // ---------- in-memory "database" ----------
-const users: MockUser[] = [...seedUsers];
-const products: Product[] = seedProducts.map((p) => ({ ...p, sizes: p.sizes.map((s) => ({ ...s })) }));
-
-const savedStock = load<Record<string, number>>(STOCK_KEY, {});
-products.forEach((p) =>
-  p.sizes.forEach((s) => {
-    const k = `${p.id}|${s.size}`;
-    if (k in savedStock) s.stock = savedStock[k];
-  })
+const users: MockUser[] = load<MockUser[]>(USERS_KEY, seedUsers.map((u) => ({ ...u })));
+const products: Product[] = load<Product[]>(
+  PRODUCTS_KEY,
+  seedProducts.map((p) => ({ ...p, sizes: p.sizes.map((s) => ({ ...s })) }))
 );
 
 interface RawLine { productId: string; size: string; quantity: number }
@@ -54,9 +52,8 @@ const orders: Order[] = load(ORDERS_KEY, []);
 const persist = () => {
   save(CARTS_KEY, carts);
   save(ORDERS_KEY, orders);
-  const stock: Record<string, number> = {};
-  products.forEach((p) => p.sizes.forEach((s) => (stock[`${p.id}|${s.size}`] = s.stock)));
-  save(STOCK_KEY, stock);
+  save(USERS_KEY, users);
+  save(PRODUCTS_KEY, products);
 };
 
 // ---------- helpers ----------
@@ -71,6 +68,25 @@ function requireCustomer(): User {
   if (!u) throw new ApiError(401, "Please log in.");
   if (u.role !== "customer") throw new ApiError(403, "Only customer accounts can do this.");
   return u;
+}
+
+// Sellers: role check, plus (for writes) a fresh status check against the user record.
+// The status in the session copy can be stale, so it is never trusted for writes.
+function requireSeller(mustBeApproved: boolean): User {
+  const session = api.getSession();
+  if (!session) throw new ApiError(401, "Please log in.");
+  if (session.role !== "seller") throw new ApiError(403, "Only seller accounts can do this.");
+  const record = users.find((u) => u.id === session.id);
+  const status = record?.sellerStatus ?? session.sellerStatus;
+  if (mustBeApproved && status !== "approved") {
+    throw new ApiError(
+      403,
+      status === "suspended"
+        ? "Your seller account is suspended."
+        : "Your seller account is awaiting admin approval."
+    );
+  }
+  return session;
 }
 
 function findSize(productId: string, size: string) {
@@ -126,10 +142,58 @@ function expireStale() {
   if (changed) persist();
 }
 
+// Server-side style validation. The browser form validates too, but this is the one that counts.
+function cleanProduct(input: ProductInput): ProductInput {
+  const name = input.name.trim();
+  if (name.length < 3 || name.length > 80) throw new ApiError(400, "Name must be 3 to 80 characters.");
+  if (!(CATEGORIES as readonly string[]).includes(input.category)) throw new ApiError(400, "Invalid category.");
+  if (!Number.isInteger(input.price) || input.price < 1 || input.price > 1_000_000) {
+    throw new ApiError(400, "Price must be a whole number of rupees between 1 and 1,000,000.");
+  }
+  const description = input.description.trim();
+  if (description.length < 10 || description.length > 500) {
+    throw new ApiError(400, "Description must be 10 to 500 characters.");
+  }
+  if (!/^#[0-9a-fA-F]{6}$/.test(input.swatch)) throw new ApiError(400, "Invalid colour.");
+  if (input.sizes.length === 0 || input.sizes.length > 8) throw new ApiError(400, "Add 1 to 8 sizes.");
+
+  const seen = new Set<string>();
+  const sizes = input.sizes.map((s) => {
+    const size = s.size.trim();
+    if (!size || size.length > 10) throw new ApiError(400, "Each size needs a label of up to 10 characters.");
+    if (seen.has(size.toLowerCase())) throw new ApiError(400, `Size "${size}" is listed twice.`);
+    seen.add(size.toLowerCase());
+    if (!Number.isInteger(s.stock) || s.stock < 0 || s.stock > 100_000) {
+      throw new ApiError(400, `Stock for size "${size}" must be a whole number from 0 to 100000.`);
+    }
+    return { size, stock: s.stock };
+  });
+  return { name, category: input.category, price: input.price, description, swatch: input.swatch, sizes };
+}
+
+const NEXT_STEP: Record<Fulfilment, Fulfilment | null> = {
+  placed: "packed",
+  packed: "shipped",
+  shipped: "delivered",
+  delivered: null,
+};
+
 // ---------- the API ----------
 export const api = {
   getSession(): User | null {
     return load<User | null>(SESSION_KEY, null);
+  },
+
+  // Re-reads the user record so a status change (for example admin approval) shows up.
+  async refreshSession(): Promise<User | null> {
+    const session = api.getSession();
+    if (!session) return null;
+    await delay(150);
+    const record = users.find((u) => u.id === session.id);
+    if (!record) return session;
+    const fresh = toUser(record);
+    saveSession(fresh);
+    return fresh;
   },
 
   async login(email: string, password: string): Promise<User> {
@@ -157,6 +221,7 @@ export const api = {
       sellerStatus: input.role === "seller" ? "pending" : undefined,
     };
     users.push(created);
+    persist();
     const user = toUser(created);
     saveSession(user);
     return user;
@@ -166,7 +231,7 @@ export const api = {
     sessionStorage.removeItem(SESSION_KEY);
   },
 
-  // ----- catalog -----
+  // ----- catalog (public reads) -----
   async listProducts(query: ProductQuery = {}): Promise<Product[]> {
     await delay();
     const q = query.q?.trim().toLowerCase();
@@ -182,6 +247,88 @@ export const api = {
     const p = products.find((x) => x.id === id);
     if (!p) throw new ApiError(404, "Product not found.");
     return p;
+  },
+
+  // ----- seller: own products -----
+  async listMyProducts(): Promise<Product[]> {
+    const user = requireSeller(false);
+    await delay();
+    return products.filter((p) => p.sellerId === user.id);
+  },
+
+  async createProduct(input: ProductInput): Promise<Product> {
+    const user = requireSeller(true);
+    await delay();
+    const data = cleanProduct(input);
+    const product: Product = {
+      id: `p-${Date.now().toString(36)}`,
+      ...data,
+      sellerId: user.id, // taken from the logged-in user, never from the request
+      sellerName: user.name,
+    };
+    products.push(product);
+    persist();
+    return product;
+  },
+
+  async updateProduct(id: string, input: ProductInput): Promise<Product> {
+    const user = requireSeller(true);
+    await delay();
+    const product = products.find((p) => p.id === id);
+    if (!product) throw new ApiError(404, "Product not found.");
+    if (product.sellerId !== user.id) throw new ApiError(403, "You can only edit your own products.");
+    Object.assign(product, cleanProduct(input));
+    persist();
+    return product;
+  },
+
+  async deleteProduct(id: string): Promise<void> {
+    const user = requireSeller(true);
+    await delay();
+    const idx = products.findIndex((p) => p.id === id);
+    if (idx === -1) throw new ApiError(404, "Product not found.");
+    if (products[idx].sellerId !== user.id) throw new ApiError(403, "You can only delete your own products.");
+    products.splice(idx, 1);
+    persist();
+  },
+
+  // ----- seller: fulfilment of own items in PAID orders -----
+  async listMyOrderItems(): Promise<SellerOrderItem[]> {
+    const user = requireSeller(false);
+    await delay();
+    expireStale();
+    const rows: SellerOrderItem[] = [];
+    for (const o of orders) {
+      if (o.status !== "PAID") continue;
+      for (const i of o.items) {
+        if (i.sellerId !== user.id) continue;
+        rows.push({
+          orderId: o.id,
+          createdAt: o.createdAt,
+          productId: i.productId,
+          name: i.name,
+          size: i.size,
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+          fulfilment: i.fulfilment,
+          address: o.address,
+        });
+      }
+    }
+    return rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  },
+
+  async advanceFulfilment(orderId: string, productId: string, size: string): Promise<void> {
+    const user = requireSeller(true);
+    await delay(200);
+    const order = orders.find((o) => o.id === orderId && o.status === "PAID");
+    const item = order?.items.find((i) => i.productId === productId && i.size === size);
+    if (!order || !item) throw new ApiError(404, "Order item not found.");
+    if (item.sellerId !== user.id) throw new ApiError(403, "This item belongs to another seller.");
+    const next = NEXT_STEP[item.fulfilment];
+    if (!next) throw new ApiError(409, "This item is already delivered.");
+    item.fulfilment = next;
+    persist();
   },
 
   // ----- cart (customer only) -----

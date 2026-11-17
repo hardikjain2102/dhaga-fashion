@@ -11,6 +11,11 @@ import OrderDetail from "./pages/OrderDetail";
 import Orders from "./pages/Orders";
 import ProductDetail from "./pages/ProductDetail";
 import Products from "./pages/Products";
+import SellerHome from "./pages/seller/SellerHome";
+import SellerLayout from "./pages/seller/SellerLayout";
+import SellerOrders from "./pages/seller/SellerOrders";
+import SellerProductForm from "./pages/seller/SellerProductForm";
+import SellerProducts from "./pages/seller/SellerProducts";
 import Signup from "./pages/Signup";
 import { ComingSoon, Forbidden, NotFound } from "./pages/Simple";
 
@@ -33,7 +38,14 @@ export default function App() {
         <Route path="orders" element={customerOnly(<Orders />)} />
         <Route path="orders/:id" element={customerOnly(<OrderDetail />)} />
 
-        <Route path="seller" element={<RequireRole roles={["seller"]}><ComingSoon title="Seller dashboard" part="c" /></RequireRole>} />
+        <Route path="seller" element={<RequireRole roles={["seller"]}><SellerLayout /></RequireRole>}>
+          <Route index element={<SellerHome />} />
+          <Route path="products" element={<SellerProducts />} />
+          <Route path="products/new" element={<SellerProductForm />} />
+          <Route path="products/:id/edit" element={<SellerProductForm />} />
+          <Route path="orders" element={<SellerOrders />} />
+        </Route>
+
         <Route path="admin" element={<RequireRole roles={["admin"]}><ComingSoon title="Admin panel" part="d" /></RequireRole>} />
 
         <Route path="*" element={<NotFound />} />

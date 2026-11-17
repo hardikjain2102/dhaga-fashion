@@ -41,6 +41,17 @@ export interface ProductQuery {
   category?: Category | "";
 }
 
+// What a seller submits when creating or editing a product.
+// sellerId and sellerName are NOT part of it: the server takes them from the logged-in user.
+export interface ProductInput {
+  name: string;
+  category: Category;
+  price: number;
+  description: string;
+  swatch: string;
+  sizes: SizeStock[];
+}
+
 // ---------- cart ----------
 export interface CartLine {
   productId: string;
@@ -92,4 +103,17 @@ export interface Order {
   address: Address;
   createdAt: string; // ISO
   expiresAt: string; // ISO, PENDING orders are cancelled after this time
+}
+
+// One row in the seller's fulfilment list: an item of a PAID order that belongs to this seller.
+export interface SellerOrderItem {
+  orderId: string;
+  createdAt: string;
+  productId: string;
+  name: string;
+  size: string;
+  quantity: number;
+  unitPrice: number;
+  fulfilment: Fulfilment;
+  address: Address; // needed to ship; only exposed for PAID orders
 }

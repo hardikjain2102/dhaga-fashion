@@ -7,6 +7,7 @@ interface AuthValue {
   login: (email: string, password: string) => Promise<User>;
   signup: (input: SignupInput) => Promise<User>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthValue | null>(null);
@@ -31,7 +32,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
-  const value = useMemo(() => ({ user, login, signup, logout }), [user, login, signup, logout]);
+  // Re-reads the account (for example after an admin approves a seller).
+  const refreshUser = useCallback(async () => {
+    setUser(await api.refreshSession());
+  }, []);
+
+  const value = useMemo(
+    () => ({ user, login, signup, logout, refreshUser }),
+    [user, login, signup, logout, refreshUser]
+  );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
