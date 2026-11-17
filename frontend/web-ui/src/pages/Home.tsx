@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../api";
 import ProductCard from "../components/ProductCard";
 import type { Product } from "../types";
@@ -18,6 +19,7 @@ export default function Home() {
         <p className="mx-auto mt-3 max-w-xl text-muted">
           Handcrafted kurtas, sarees and dupattas from independent weavers.
         </p>
+        <Link to="/products" className="btn-primary mt-6">Shop all</Link>
       </section>
 
       <section aria-labelledby="featured">

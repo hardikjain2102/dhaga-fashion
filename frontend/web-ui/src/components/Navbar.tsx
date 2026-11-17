@@ -1,11 +1,13 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { useCart } from "../cart/CartContext";
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
   `text-sm transition hover:text-thread ${isActive ? "text-thread font-medium" : "text-ink"}`;
 
 export default function Navbar() {
   const { user, logout } = useAuth();
+  const { cart } = useCart();
   const navigate = useNavigate();
 
   const onLogout = () => {
@@ -15,16 +17,23 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-10 border-b border-sand-200 bg-paper/95 backdrop-blur">
-      <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3" aria-label="Main">
+      <nav className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-3" aria-label="Main">
         <Link to="/" className="font-display text-2xl tracking-tight">
           Dhaga<span className="text-thread">.</span>
         </Link>
 
-        <div className="flex items-center gap-5">
-          <NavLink to="/" end className={linkClass}>Shop</NavLink>
+        <div className="flex flex-wrap items-center gap-5">
+          <NavLink to="/products" className={linkClass}>Shop</NavLink>
           {user?.role === "customer" && (
             <>
-              <NavLink to="/cart" className={linkClass}>Cart</NavLink>
+              <NavLink to="/cart" className={linkClass}>
+                Cart
+                {cart.itemCount > 0 && (
+                  <span className="ml-1 rounded-full bg-thread px-1.5 py-0.5 text-xs text-paper">
+                    {cart.itemCount}
+                  </span>
+                )}
+              </NavLink>
               <NavLink to="/orders" className={linkClass}>My orders</NavLink>
             </>
           )}
