@@ -3,8 +3,9 @@
 import { seedProducts, seedUsers, type MockUser } from "./mockData";
 import {
   CATEGORIES,
-  type Address, type Cart, type CartLine, type Fulfilment, type Order, type Product,
-  type ProductInput, type ProductQuery, type SellerOrderItem, type SignupInput, type User,
+  type AdminOrder, type AdminUser, type Address, type Cart, type CartLine, type Fulfilment,
+  type Order, type Product, type ProductInput, type ProductQuery, type SellerOrderItem,
+  type SignupInput, type User,
 } from "../types";
 
 export class ApiError extends Error {
@@ -61,6 +62,10 @@ const toUser = (u: MockUser): User => ({
   id: u.id, name: u.name, email: u.email, role: u.role, sellerStatus: u.sellerStatus,
 });
 
+const toAdminUser = (u: MockUser): AdminUser => ({
+  id: u.id, name: u.name, email: u.email, role: u.role, sellerStatus: u.sellerStatus,
+});
+
 const saveSession = (user: User) => save(SESSION_KEY, user);
 
 function requireCustomer(): User {
@@ -85,6 +90,17 @@ function requireSeller(mustBeApproved: boolean): User {
         ? "Your seller account is suspended."
         : "Your seller account is awaiting admin approval."
     );
+  }
+  return session;
+}
+
+// Admins: the role is checked on the session AND re-read from the user record.
+function requireAdmin(): User {
+  const session = api.getSession();
+  if (!session) throw new ApiError(401, "Please log in.");
+  const record = users.find((u) => u.id === session.id);
+  if (session.role !== "admin" || record?.role !== "admin") {
+    throw new ApiError(403, "Only admins can do this.");
   }
   return session;
 }
@@ -325,6 +341,61 @@ export const api = {
     const item = order?.items.find((i) => i.productId === productId && i.size === size);
     if (!order || !item) throw new ApiError(404, "Order item not found.");
     if (item.sellerId !== user.id) throw new ApiError(403, "This item belongs to another seller.");
+    const next = NEXT_STEP[item.fulfilment];
+    if (!next) throw new ApiError(409, "This item is already delivered.");
+    item.fulfilment = next;
+    persist();
+  },
+
+  // ----- admin -----
+  async listUsers(): Promise<AdminUser[]> {
+    requireAdmin();
+    await delay();
+    return users.map(toAdminUser);
+  },
+
+  // Admin approves, suspends or reinstates a seller. Only these two target states exist.
+  async setSellerStatus(userId: string, status: "approved" | "suspended"): Promise<AdminUser> {
+    requireAdmin();
+    await delay(200);
+    if (status !== "approved" && status !== "suspended") throw new ApiError(400, "Invalid status.");
+    const target = users.find((u) => u.id === userId);
+    if (!target) throw new ApiError(404, "User not found.");
+    if (target.role !== "seller") throw new ApiError(400, "Only seller accounts have an approval status.");
+    if (target.sellerStatus === status) throw new ApiError(409, `This seller is already ${status}.`);
+    target.sellerStatus = status;
+    persist();
+    return toAdminUser(target);
+  },
+
+  // Admin removes any product (moderation). No ownership check, by design.
+  async adminDeleteProduct(id: string): Promise<void> {
+    requireAdmin();
+    await delay();
+    const idx = products.findIndex((p) => p.id === id);
+    if (idx === -1) throw new ApiError(404, "Product not found.");
+    products.splice(idx, 1);
+    persist();
+  },
+
+  async adminListOrders(): Promise<AdminOrder[]> {
+    requireAdmin();
+    await delay();
+    expireStale();
+    return [...orders]
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .map((o) => {
+        const owner = users.find((u) => u.id === o.userId);
+        return { ...o, customerName: owner?.name ?? "Unknown", customerEmail: owner?.email ?? "" };
+      });
+  },
+
+  async adminAdvanceFulfilment(orderId: string, productId: string, size: string): Promise<void> {
+    requireAdmin();
+    await delay(200);
+    const order = orders.find((o) => o.id === orderId && o.status === "PAID");
+    const item = order?.items.find((i) => i.productId === productId && i.size === size);
+    if (!order || !item) throw new ApiError(404, "Order item not found.");
     const next = NEXT_STEP[item.fulfilment];
     if (!next) throw new ApiError(409, "This item is already delivered.");
     item.fulfilment = next;

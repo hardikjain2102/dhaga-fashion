@@ -117,3 +117,17 @@ export interface SellerOrderItem {
   fulfilment: Fulfilment;
   address: Address; // needed to ship; only exposed for PAID orders
 }
+
+// ---------- admin ----------
+export interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  sellerStatus?: SellerStatus;
+}
+
+export interface AdminOrder extends Order {
+  customerName: string;
+  customerEmail: string;
+}

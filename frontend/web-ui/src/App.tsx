@@ -2,6 +2,11 @@ import type { ReactNode } from "react";
 import { Route, Routes } from "react-router-dom";
 import { RequireRole } from "./auth/RequireRole";
 import Layout from "./components/Layout";
+import AdminHome from "./pages/admin/AdminHome";
+import AdminLayout from "./pages/admin/AdminLayout";
+import AdminOrders from "./pages/admin/AdminOrders";
+import AdminProducts from "./pages/admin/AdminProducts";
+import AdminUsers from "./pages/admin/AdminUsers";
 import CartPage from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import Home from "./pages/Home";
@@ -17,7 +22,7 @@ import SellerOrders from "./pages/seller/SellerOrders";
 import SellerProductForm from "./pages/seller/SellerProductForm";
 import SellerProducts from "./pages/seller/SellerProducts";
 import Signup from "./pages/Signup";
-import { ComingSoon, Forbidden, NotFound } from "./pages/Simple";
+import { Forbidden, NotFound } from "./pages/Simple";
 
 const customerOnly = (page: ReactNode) => <RequireRole roles={["customer"]}>{page}</RequireRole>;
 
@@ -46,7 +51,12 @@ export default function App() {
           <Route path="orders" element={<SellerOrders />} />
         </Route>
 
-        <Route path="admin" element={<RequireRole roles={["admin"]}><ComingSoon title="Admin panel" part="d" /></RequireRole>} />
+        <Route path="admin" element={<RequireRole roles={["admin"]}><AdminLayout /></RequireRole>}>
+          <Route index element={<AdminHome />} />
+          <Route path="users" element={<AdminUsers />} />
+          <Route path="products" element={<AdminProducts />} />
+          <Route path="orders" element={<AdminOrders />} />
+        </Route>
 
         <Route path="*" element={<NotFound />} />
       </Route>
