@@ -50,7 +50,7 @@ export default function MockPayment() {
       </div>
     );
   }
-  if (!order) return <p className="text-muted">Loading...</p>;
+  if (!order) return <p role="status" className="text-muted">Loading...</p>;
 
   return (
     <div className="mx-auto max-w-md space-y-4">

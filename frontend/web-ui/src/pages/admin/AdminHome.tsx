@@ -21,7 +21,7 @@ export default function AdminHome() {
   }, []);
 
   if (error) return <p role="alert" className="text-thread">{error}</p>;
-  if (!data) return <p className="text-muted">Loading...</p>;
+  if (!data) return <p role="status" className="text-muted">Loading...</p>;
 
   const customers = data.users.filter((u) => u.role === "customer").length;
   const sellers = data.users.filter((u) => u.role === "seller");

@@ -17,7 +17,7 @@ export default function Orders() {
     <div className="space-y-6">
       <h1 className="text-3xl">My orders</h1>
       {error && <p role="alert" className="text-thread">{error}</p>}
-      {!orders && !error && <p className="text-muted">Loading...</p>}
+      {!orders && !error && <p role="status" className="text-muted">Loading...</p>}
       {orders && orders.length === 0 && (
         <div className="card p-8 text-center">
           <p className="text-muted">You haven't placed any orders yet.</p>

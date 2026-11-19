@@ -25,7 +25,7 @@ export default function Home() {
       <section aria-labelledby="featured">
         <h2 id="featured" className="mb-4 text-2xl">Featured</h2>
         {error && <p role="alert" className="text-thread">{error}</p>}
-        {!products && !error && <p className="text-muted">Loading...</p>}
+        {!products && !error && <p role="status" className="text-muted">Loading...</p>}
         {products && (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {products.slice(0, 4).map((p) => (

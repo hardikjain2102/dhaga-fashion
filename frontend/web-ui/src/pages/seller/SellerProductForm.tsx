@@ -82,7 +82,7 @@ export default function SellerProductForm() {
     }
   };
 
-  if (loading) return <p className="text-muted">Loading...</p>;
+  if (loading) return <p role="status" className="text-muted">Loading...</p>;
   if (editing && error && !name) {
     return (
       <div className="text-center">

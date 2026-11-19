@@ -20,7 +20,7 @@ export default function SellerHome() {
   }, []);
 
   if (error) return <p role="alert" className="text-thread">{error}</p>;
-  if (!products || !items) return <p className="text-muted">Loading...</p>;
+  if (!products || !items) return <p role="status" className="text-muted">Loading...</p>;
 
   const outOfStock = products.filter((p) => totalStock(p) === 0);
   const low = products.filter((p) => totalStock(p) > 0 && totalStock(p) <= 5);

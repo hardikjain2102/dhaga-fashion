@@ -60,7 +60,7 @@ export default function AdminOrders() {
       </div>
 
       {error && <p role="alert" className="text-thread">{error}</p>}
-      {!orders && !error && <p className="text-muted">Loading...</p>}
+      {!orders && !error && <p role="status" className="text-muted">Loading...</p>}
       {orders && shown.length === 0 && <p className="card p-6 text-center text-muted">No orders found.</p>}
 
       <ul className="space-y-3">

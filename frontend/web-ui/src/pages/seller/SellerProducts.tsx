@@ -30,7 +30,7 @@ export default function SellerProducts() {
         <Link to="/seller/products/new" className="btn-primary">Add product</Link>
       </div>
       {error && <p role="alert" className="text-thread">{error}</p>}
-      {!products && !error && <p className="text-muted">Loading...</p>}
+      {!products && !error && <p role="status" className="text-muted">Loading...</p>}
       {products && products.length === 0 && (
         <p className="card p-6 text-center text-muted">No products yet.</p>
       )}

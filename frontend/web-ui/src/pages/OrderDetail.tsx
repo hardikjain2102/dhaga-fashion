@@ -32,7 +32,7 @@ export default function OrderDetail() {
       </div>
     );
   }
-  if (!order) return <p className="text-muted">Loading...</p>;
+  if (!order) return <p role="status" className="text-muted">Loading...</p>;
 
   const b = banner[order.status];
   return (

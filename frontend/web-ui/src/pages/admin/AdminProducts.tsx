@@ -40,7 +40,7 @@ export default function AdminProducts() {
         </div>
       </div>
       {error && <p role="alert" className="text-thread">{error}</p>}
-      {!products && !error && <p className="text-muted">Loading...</p>}
+      {!products && !error && <p role="status" className="text-muted">Loading...</p>}
       {products && shown.length === 0 && <p className="card p-6 text-center text-muted">No products found.</p>}
 
       {shown.length > 0 && (

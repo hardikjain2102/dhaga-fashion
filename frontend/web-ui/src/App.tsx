@@ -9,6 +9,7 @@ import AdminProducts from "./pages/admin/AdminProducts";
 import AdminUsers from "./pages/admin/AdminUsers";
 import CartPage from "./pages/Cart";
 import Checkout from "./pages/Checkout";
+import Crash from "./pages/Crash";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import MockPayment from "./pages/MockPayment";
@@ -57,6 +58,8 @@ export default function App() {
           <Route path="products" element={<AdminProducts />} />
           <Route path="orders" element={<AdminOrders />} />
         </Route>
+
+        {import.meta.env.DEV && <Route path="__crash" element={<Crash />} />}
 
         <Route path="*" element={<NotFound />} />
       </Route>

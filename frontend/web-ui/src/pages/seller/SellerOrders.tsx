@@ -54,7 +54,7 @@ export default function SellerOrders() {
       </p>
 
       {error && <p role="alert" className="text-thread">{error}</p>}
-      {!items && !error && <p className="text-muted">Loading...</p>}
+      {!items && !error && <p role="status" className="text-muted">Loading...</p>}
       {items && shown.length === 0 && <p className="card p-6 text-center text-muted">Nothing to show.</p>}
 
       <ul className="space-y-3">

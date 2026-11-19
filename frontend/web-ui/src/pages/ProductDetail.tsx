@@ -40,7 +40,7 @@ export default function ProductDetail() {
       </div>
     );
   }
-  if (!product) return <p className="text-muted">Loading...</p>;
+  if (!product) return <p role="status" className="text-muted">Loading...</p>;
 
   const selected = product.sizes.find((s) => s.size === size);
   const maxQty = Math.min(selected?.stock ?? 1, 10);

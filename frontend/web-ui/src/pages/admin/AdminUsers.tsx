@@ -61,7 +61,7 @@ export default function AdminUsers() {
       </div>
 
       {error && <p role="alert" className="text-thread">{error}</p>}
-      {!users && !error && <p className="text-muted">Loading...</p>}
+      {!users && !error && <p role="status" className="text-muted">Loading...</p>}
 
       {users && (
         <div className="card overflow-x-auto">
