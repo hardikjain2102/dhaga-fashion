@@ -1,0 +1,13 @@
+# DEVELOPMENT ONLY. Throwaway passwords. Production uses Kubernetes Secrets (M8).
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: dev_superuser_pw
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+      - pgdata:/var/lib/postgresql/data
+volumes:
+  pgdata:
