@@ -4,6 +4,7 @@ import helmet from "helmet";
 import type { Pool } from "pg";
 import type { Logger } from "pino";
 import type { Config } from "./config";
+import { internalRouter } from "./internal";
 import { HttpError, errorHandler } from "./middleware";
 import { authRouter } from "./routes";
 
@@ -48,6 +49,9 @@ export function buildApp(cfg: Config, pool: Pool, log: Logger) {
     },
     authRouter(cfg, pool, log)
   );
+
+  // Service-to-service only. Never routed by the Ingress.
+  app.use("/internal", internalRouter(cfg, pool));
 
   app.use((_req, _res, next) => next(new HttpError(404, "Not found.")));
   app.use(errorHandler(log));

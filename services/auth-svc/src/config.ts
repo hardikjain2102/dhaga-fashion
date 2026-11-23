@@ -34,9 +34,12 @@ export interface Config {
   cookieSecure: boolean;
   trustProxy: number; // number of proxies in front (the Ingress is 1)
   rateLimitMax: number;
+  internalSecret: string; // shared with services that call /internal/*
 }
 
 export function loadConfig(): Config {
+  const internalSecret = requireSecret("INTERNAL_API_SECRET");
+  if (internalSecret.length < 32) throw new Error("INTERNAL_API_SECRET must be at least 32 characters");
   return {
     port: Number(process.env.PORT ?? 8080),
     logLevel: process.env.LOG_LEVEL ?? "info",
@@ -48,5 +51,6 @@ export function loadConfig(): Config {
     cookieSecure: (process.env.COOKIE_SECURE ?? "true") === "true",
     trustProxy: Number(process.env.TRUST_PROXY ?? 0),
     rateLimitMax: Number(process.env.RATE_LIMIT_MAX ?? 20),
+    internalSecret,
   };
 }
